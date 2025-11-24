@@ -7,6 +7,9 @@ import java.util.Scanner;
 public class PortScanner {
     
     private static volatile boolean stopScanning = false;
+    private static volatile int portsScanned = 0;
+    private static volatile int openPortsFound = 0;
+    private static volatile long scanStartTime = 0;
     
     // Top 20 most common ports
     private static final int[] TOP_20_PORTS = {
@@ -64,16 +67,23 @@ public class PortScanner {
         System.out.println();
         System.out.println("========================================");
     }
+    
     private static void quickScan(Scanner scanner) {
         clearScreen();
         System.out.println("========================================");
         System.out.println("      QUICK SCAN MODE");
         System.out.println("========================================");
         
-         System.out.print("Enter target host (e.g. localhost, 192.168.1.1): ");
+        System.out.print("Enter target host (e.g. localhost, 192.168.1.1): ");
         String host = scanner.nextLine().trim();
         
-        System.out.println("\nScanning top 20 most common ports...\n");
+        System.out.println("\nScanning top 20 most common ports...");
+        System.out.println("Type 'stats' for statistics\n");
+        
+        portsScanned = 0;
+        openPortsFound = 0;
+        scanStartTime = System.currentTimeMillis();
+        startStopThread();
         
         long startTime = System.currentTimeMillis();
         scanSpecificPorts(host, TOP_20_PORTS, 200);
@@ -102,9 +112,12 @@ public class PortScanner {
         int timeout = Integer.parseInt(scanner.nextLine().trim());
         
         System.out.println("\nStarting scan...");
-        System.out.println("Type 'stop' at any time to quit\n");
+        System.out.println("Type 'stop' to quit | Type 'stats' for statistics\n");
         
         stopScanning = false;
+        portsScanned = 0;
+        openPortsFound = 0;
+        scanStartTime = System.currentTimeMillis();
         startStopThread();
         
         long startTime = System.currentTimeMillis();
@@ -135,9 +148,12 @@ public class PortScanner {
         }
         
         System.out.println("\nScanning all 65535 ports...");
-        System.out.println("Type 'stop' at any time to quit\n");
+        System.out.println("Type 'stop' to quit | Type 'stats' for statistics\n");
         
         stopScanning = false;
+        portsScanned = 0;
+        openPortsFound = 0;
+        scanStartTime = System.currentTimeMillis();
         startStopThread();
         
         long startTime = System.currentTimeMillis();
@@ -158,9 +174,12 @@ public class PortScanner {
         String host = scanner.nextLine().trim();
         
         System.out.println("\nScanning ports 1-1024...");
-        System.out.println("Type 'stop' at any time to quit\n");
+        System.out.println("Type 'stop' to quit | Type 'stats' for statistics\n");
         
         stopScanning = false;
+        portsScanned = 0;
+        openPortsFound = 0;
+        scanStartTime = System.currentTimeMillis();
         startStopThread();
         
         long startTime = System.currentTimeMillis();
@@ -181,12 +200,27 @@ public class PortScanner {
                         stopScanning = true;
                         System.out.println("\n[!] Stopping scan...");
                         break;
+                    } else if (input.equals("stats")) {
+                        showLiveStats();
                     }
                 }
             }
         });
         stopThread.setDaemon(true);
         stopThread.start();
+    }
+    
+    private static void showLiveStats() {
+        long currentTime = System.currentTimeMillis();
+        long elapsed = (currentTime - scanStartTime) / 1000;
+        double portsPerSecond = elapsed > 0 ? (double) portsScanned / elapsed : 0;
+        
+        System.out.println("\n========== LIVE STATISTICS ==========");
+        System.out.println("  Ports Scanned:    " + portsScanned);
+        System.out.println("  Open Ports Found: " + openPortsFound);
+        System.out.println("  Time Elapsed:     " + elapsed + " seconds");
+        System.out.println("  Scan Rate:        " + String.format("%.2f", portsPerSecond) + " ports/sec");
+        System.out.println("=====================================\n");
     }
     
     private static void scanSpecificPorts(String host, int[] ports, int timeout) {
@@ -200,7 +234,10 @@ public class PortScanner {
                 System.out.println("[+] Port " + port + " is open" + 
                                    (service != null ? " (" + service + ")" : ""));
                 openCount++;
+                openPortsFound++;
             }
+            
+            portsScanned++;
             int progress = ((i + 1) * 100) / ports.length;
             System.out.print("\rProgress: " + progress + "% [" + (i + 1) + "/" + ports.length + "]");
         }   
@@ -222,9 +259,12 @@ public class PortScanner {
                 System.out.println("[+] Port " + port + " is OPEN" + 
                                    (service != null ? " (" + service + ")" : ""));
                 openCount++;
+                openPortsFound++;
             }
             
             checked++;
+            portsScanned++;
+            
             if (checked % 100 == 0 || checked == totalPorts) {
                 int progress = (checked * 100) / totalPorts;
                 System.out.print("\rProgress: " + progress + "% [" + checked + "/" + totalPorts + "]");
@@ -238,6 +278,8 @@ public class PortScanner {
         System.out.println("========================================");
         System.out.println(stopScanning ? "Scan stopped by user!" : "Scan complete!");
         System.out.println("Time taken: " + (endTime - startTime) / 1000.0 + " seconds");
+        System.out.println("Total ports scanned: " + portsScanned);
+        System.out.println("Open ports found: " + openPortsFound);
         System.out.println("========================================");
     }
     
