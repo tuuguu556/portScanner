@@ -149,3 +149,7 @@ Suggestions and improvements are welcome
 ## Author
 
 Created only as a educational tool for learning network protocols and Java socket programming.
+
+## Disclaimer
+
+I did have to use Claude's Sonnet 4.5 AI chat model for some features, but of course I did write my own code.
